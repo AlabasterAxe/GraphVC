@@ -1,8 +1,14 @@
 import * as os from "os";
 import * as http from "http";
 import { Server } from "socket.io";
+import nodeStatic from "node-static";
 
-var app = http.createServer().listen(8080);
+const fileServer = new nodeStatic.Server(".");
+const app = http
+  .createServer(function (req, res) {
+    fileServer.serve(req, res);
+  })
+  .listen(8080);
 
 var io = new Server(app);
 io.sockets.on("connection", (socket) => {
@@ -21,10 +27,20 @@ io.sockets.on("connection", (socket) => {
     log("Received request to create or join room " + room);
 
     log("Client ID " + socket.id + " joined room " + room);
-    io.sockets.in(room).emit("join", room);
-    socket.join(room);
-    socket.emit("joined", room, socket.id);
-    io.sockets.in(room).emit("ready");
+    var clientsInRoom = io.sockets.adapter.rooms.get(room);
+    var numClients = clientsInRoom ? clientsInRoom.size : 0;
+    log("Room " + room + " now has " + numClients + " client(s)");
+
+    if (numClients === 0) {
+      socket.join(room);
+      log("Client ID " + socket.id + " created room " + room);
+      socket.emit("created", room, socket.id);
+    } else {
+      io.sockets.in(room).emit("join", room);
+      socket.join(room);
+      socket.emit("joined", room, socket.id);
+      io.sockets.in(room).emit("ready");
+    }
   });
 
   socket.on("ipaddr", () => {
