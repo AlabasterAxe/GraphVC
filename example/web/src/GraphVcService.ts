@@ -23,7 +23,7 @@ const CONSTRAINTS = {
 
 function createPeerConnection(
   socket: Socket,
-  onRemoteStream: (stream: MediaStream) => void
+  onRemoteTrack: (track: MediaStreamTrack) => void
 ): RTCPeerConnection {
   function handleIceCandidate(event: RTCPeerConnectionIceEvent) {
     console.log("icecandidate event: ", event);
@@ -41,9 +41,7 @@ function createPeerConnection(
 
   function handleTrackEvent(event: RTCTrackEvent) {
     console.log("Remote stream added.");
-    if (event.streams.length > 0) {
-      onRemoteStream(event.streams[0]);
-    }
+    onRemoteTrack(event.track);
   }
 
   try {
@@ -86,7 +84,6 @@ export function initialize() {
   let isStarted = false;
   let localStream: MediaStream | undefined;
   let remoteStream: MediaStream | undefined;
-  let turnReady = false;
   let pc: RTCPeerConnection | undefined;
 
   // TODO(matt): figure out how to do this with react
@@ -110,9 +107,12 @@ export function initialize() {
     );
     if (!isStarted && typeof localStream !== "undefined" && isChannelReady) {
       console.log(">>>>>> creating peer connection");
-      pc = createPeerConnection(socket, (stream) => {
-        remoteStream = stream;
-        remoteVideo.srcObject = remoteStream;
+      pc = createPeerConnection(socket, (track) => {
+        if (!remoteStream) {
+          remoteStream = new MediaStream();
+          remoteVideo.srcObject = remoteStream;
+        }
+        remoteStream.addTrack(track);
       });
       for (const track of localStream.getTracks()) {
         pc.addTrack(track);
