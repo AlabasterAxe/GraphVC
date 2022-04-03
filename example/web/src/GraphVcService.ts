@@ -1,96 +1,104 @@
 import { Socket } from "socket.io-client";
+import { v4 as uuidv4 } from "uuid";
 
 declare const io: () => Socket;
 
 const socket = io();
 const ROOM = "foo";
 
+type User = {
+  id: string;
+};
+
 export class GraphVcService {
+  isChannelReady = false;
+  isInitiator = false;
+  isStarted = false;
+  localStream: MediaStream | undefined;
+  remoteStream: MediaStream | undefined;
+  pc: RTCPeerConnection | undefined;
+
+  readonly id = uuidv4();
+
+  maybeStart() {
+    console.log(
+      ">>>>>>> maybeStart() ",
+      this.isStarted,
+      this.localStream,
+      this.isChannelReady
+    );
+    if (
+      !this.isStarted &&
+      typeof this.localStream !== "undefined" &&
+      this.isChannelReady
+    ) {
+      console.log(">>>>>> creating peer connection");
+      this.pc = createPeerConnection(socket, (track) => {
+        if (!this.remoteStream) {
+          this.remoteStream = new MediaStream();
+          _onStreamChange(this.getActiveStreams());
+        }
+        this.remoteStream.addTrack(track);
+      });
+      for (const track of this.localStream.getTracks()) {
+        this.pc.addTrack(track);
+      }
+      this.isStarted = true;
+      console.log("isInitiator", this.isInitiator);
+      if (this.isInitiator) {
+        doCall(socket, this.pc);
+      }
+    }
+  }
+
+  getActiveStreams() {
+    const result = [];
+
+    if (this.localStream) {
+      result.push(this.localStream);
+    }
+
+    if (this.remoteStream) {
+      result.push(this.remoteStream);
+    }
+
+    return result;
+  }
+
+  onLocalStream(stream: MediaStream) {
+    console.log("Adding local stream.");
+    this.localStream = stream;
+    sendMessage(socket, "got user media");
+    _onStreamChange(this.getActiveStreams());
+  }
+
+  hangup() {
+    console.log("Hanging up.");
+    this.stop();
+    sendMessage(socket, "bye");
+  }
+
+  handleRemoteHangup() {
+    console.log("Session terminated.");
+    this.stop();
+    this.isInitiator = false;
+  }
+
+  stop() {
+    this.isStarted = false;
+    if (this.pc) {
+      this.pc.close();
+      this.pc = undefined;
+    }
+  }
+
   initialize() {
-    let isChannelReady = false;
-    let isInitiator = false;
-    let isStarted = false;
-    let localStream: MediaStream | undefined;
-    let remoteStream: MediaStream | undefined;
-    let pc: RTCPeerConnection | undefined;
-
-    function getActiveStreams() {
-      const result = [];
-
-      if (localStream) {
-        result.push(localStream);
-      }
-
-      if (remoteStream) {
-        result.push(remoteStream);
-      }
-
-      return result;
-    }
-
-    function maybeStart() {
-      console.log(
-        ">>>>>>> maybeStart() ",
-        isStarted,
-        localStream,
-        isChannelReady
-      );
-      if (!isStarted && typeof localStream !== "undefined" && isChannelReady) {
-        console.log(">>>>>> creating peer connection");
-        pc = createPeerConnection(socket, (track) => {
-          if (!remoteStream) {
-            remoteStream = new MediaStream();
-            _onStreamChange(getActiveStreams());
-          }
-          remoteStream.addTrack(track);
-        });
-        for (const track of localStream.getTracks()) {
-          pc.addTrack(track);
-        }
-        isStarted = true;
-        console.log("isInitiator", isInitiator);
-        if (isInitiator) {
-          doCall(socket, pc);
-        }
-      }
-    }
-
-    function onLocalStream(stream: MediaStream) {
-      console.log("Adding local stream.");
-      localStream = stream;
-      sendMessage(socket, "got user media");
-      _onStreamChange(getActiveStreams());
-      if (isInitiator) {
-        maybeStart();
-      }
-    }
-
-    function hangup() {
-      console.log("Hanging up.");
-      stop();
-      sendMessage(socket, "bye");
-    }
-
-    function handleRemoteHangup() {
-      console.log("Session terminated.");
-      stop();
-      isInitiator = false;
-    }
-
-    function stop() {
-      isStarted = false;
-      if (pc) {
-        pc.close();
-        pc = undefined;
-      }
-    }
-
-    socket.emit("create or join", ROOM);
+    socket.emit("create-or-join", { roomId: ROOM, user: { id: this.id } });
     console.log("Attempted to create or  join room", ROOM);
 
     socket.on("created", (room) => {
       console.log("Created room " + room);
-      isInitiator = true;
+      this.isInitiator = true;
     });
 
     socket.on("full", (room) => {
@@ -100,12 +108,12 @@ export class GraphVcService {
     socket.on("join", (room) => {
       console.log("Another peer made a request to join room " + room);
       console.log("This peer is the initiator of room " + room + "!");
-      isChannelReady = true;
+      this.isChannelReady = true;
     });
 
     socket.on("joined", (room) => {
       console.log("joined: " + room);
-      isChannelReady = true;
+      this.isChannelReady = true;
     });
 
     socket.on("log", (array) => {
@@ -115,30 +123,28 @@ export class GraphVcService {
     // This client receives a message
     socket.on("message", (message) => {
       console.log("Client received message:", message);
-      if (message === "got user media") {
-        maybeStart();
-      } else if (message.type === "offer") {
-        if (!isInitiator && !isStarted) {
-          maybeStart();
+      if (message.type === "offer") {
+        if (!this.isInitiator && !this.isStarted) {
+          this.maybeStart();
         }
-        if (pc) {
-          pc.setRemoteDescription(new RTCSessionDescription(message));
-          doAnswer(socket, pc);
+        if (this.pc) {
+          this.pc.setRemoteDescription(new RTCSessionDescription(message));
+          doAnswer(socket, this.pc);
         }
-      } else if (message.type === "answer" && isStarted) {
-        if (pc) {
-          pc.setRemoteDescription(new RTCSessionDescription(message));
+      } else if (message.type === "answer" && this.isStarted) {
+        if (this.pc) {
+          this.pc.setRemoteDescription(new RTCSessionDescription(message));
         }
-      } else if (message.type === "candidate" && isStarted) {
+      } else if (message.type === "candidate" && this.isStarted) {
         var candidate = new RTCIceCandidate({
           sdpMLineIndex: message.label,
           candidate: message.candidate,
         });
-        if (pc) {
-          pc.addIceCandidate(candidate);
+        if (this.pc) {
+          this.pc.addIceCandidate(candidate);
         }
-      } else if (message === "bye" && isStarted) {
-        handleRemoteHangup();
+      } else if (message === "bye" && this.isStarted) {
+        this.handleRemoteHangup();
       }
     });
 
@@ -148,7 +154,7 @@ export class GraphVcService {
         audio: false,
         video: true,
       })
-      .then(onLocalStream)
+      .then((stream) => this.onLocalStream(stream))
       .catch(function (e) {
         alert("getUserMedia() error: " + e.name);
       });
@@ -183,6 +189,22 @@ export function registerOnStreamChange(
 export function clearOnStreamChange() {
   _onStreamChange = (streams) => {
     console.log("streams changed", streams);
+  };
+}
+
+let _onParticipantsChange: (users: User[]) => void = (users) => {
+  console.log("streams changed", users);
+};
+
+export function registerOnParticipantsChange(
+  onParticipantsChange: (users: User[]) => void
+) {
+  _onParticipantsChange = onParticipantsChange;
+}
+
+export function clearOnParticipantsChange() {
+  _onParticipantsChange = (users: User[]) => {
+    console.log("participants changed", users);
   };
 }
 

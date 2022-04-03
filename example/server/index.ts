@@ -2,6 +2,7 @@ import * as os from "os";
 import * as http from "http";
 import { Server } from "socket.io";
 import nodeStatic from "node-static";
+import { CreateOrJoin, CreateOrJoinRequest } from "../common/src/transfer";
 
 console.log("starting server");
 const fileServer = new nodeStatic.Server("../web/build");
@@ -24,23 +25,23 @@ io.sockets.on("connection", (socket) => {
     socket.broadcast.emit("message", message);
   });
 
-  socket.on("create or join", (room) => {
-    log("Received request to create or join room " + room);
+  socket.on(CreateOrJoin, ({ roomId, user }: CreateOrJoinRequest) => {
+    log("Received request to create or join room " + roomId);
 
-    log("Client ID " + socket.id + " joined room " + room);
-    var clientsInRoom = io.sockets.adapter.rooms.get(room);
+    log("Client ID " + user.id + " joined room " + roomId);
+    var clientsInRoom = io.sockets.adapter.rooms.get(roomId);
     var numClients = clientsInRoom ? clientsInRoom.size : 0;
-    log("Room " + room + " now has " + numClients + " client(s)");
+    log("Room " + roomId + " now has " + numClients + " client(s)");
 
     if (numClients === 0) {
-      socket.join(room);
-      log("Client ID " + socket.id + " created room " + room);
-      socket.emit("created", room, socket.id);
+      socket.join(roomId);
+      log("Client ID " + user.id + " created roomId " + roomId);
+      socket.emit("created", roomId, socket.id);
     } else {
-      io.sockets.in(room).emit("join", room);
-      socket.join(room);
-      socket.emit("joined", room, socket.id);
-      io.sockets.in(room).emit("ready");
+      io.sockets.in(roomId).emit("join", roomId);
+      socket.join(roomId);
+      socket.emit("joined", roomId, socket.id);
+      io.sockets.in(roomId).emit("ready");
     }
   });
 
