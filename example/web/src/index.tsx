@@ -3,7 +3,7 @@ import ReactDOM from "react-dom";
 import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
-import { GraphVcService } from "./GraphVcService";
+import { graphVcService } from "./GraphVcService";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -11,8 +11,6 @@ ReactDOM.render(
   </React.StrictMode>,
   document.getElementById("root")
 );
-
-const graphVcService = new GraphVcService();
 
 graphVcService.initialize();
 

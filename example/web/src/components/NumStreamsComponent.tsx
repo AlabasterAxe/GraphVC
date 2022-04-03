@@ -1,7 +1,12 @@
 import { useStreamContext } from "../StreamContext";
 
-export function NumStreamsComponent() {
-  const streams = useStreamContext();
+export function StatsComponent() {
+  const { streams, participants } = useStreamContext();
 
-  return <div>Number of Streams: {streams.length}</div>;
+  return (
+    <ul>
+      <li>Number of Streams: {streams.length}</li>
+      <li>Number of Participants: {participants.length}</li>
+    </ul>
+  );
 }

@@ -12,7 +12,7 @@ type User = {
 
 export class GraphVcService {
   isChannelReady = false;
-  isInitiator = false;
+  isInitiator = true;
   isStarted = false;
   localStream: MediaStream | undefined;
   remoteStream: MediaStream | undefined;
@@ -99,19 +99,22 @@ export class GraphVcService {
     socket.on("created", (room) => {
       console.log("Created room " + room);
       this.isInitiator = true;
+      _onParticipantsChange([{ id: this.id }]);
     });
 
     socket.on("full", (room) => {
       console.log("Room " + room + " is full");
     });
 
-    socket.on("join", (room) => {
-      console.log("Another peer made a request to join room " + room);
-      console.log("This peer is the initiator of room " + room + "!");
+    socket.on("join", ({ roomId, userId }) => {
+      console.log(`User Id ${userId} made a request to join room ` + roomId);
+      console.log("This peer is the initiator of room " + roomId + "!");
+      _onParticipantsChange([{ id: this.id }, { id: userId }]);
       this.isChannelReady = true;
     });
 
     socket.on("joined", (room) => {
+      // TODO (matt): send the existing participants
       console.log("joined: " + room);
       this.isChannelReady = true;
     });
@@ -124,7 +127,8 @@ export class GraphVcService {
     socket.on("message", (message) => {
       console.log("Client received message:", message);
       if (message.type === "offer") {
-        if (!this.isInitiator && !this.isStarted) {
+        if (!this.isStarted) {
+          this.isInitiator = false;
           this.maybeStart();
         }
         if (this.pc) {
@@ -264,3 +268,5 @@ async function doAnswer(socket: Socket, pc: RTCPeerConnection) {
     console.log("pc.createAnswer() failed", e);
   }
 }
+
+export const graphVcService = new GraphVcService();

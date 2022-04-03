@@ -6,9 +6,9 @@ export type VideoComponentProps = {
 };
 
 export function StreamShower() {
-  const streams = useStreamContext();
+  const vcState = useStreamContext();
 
-  const result = streams.map((stream) => (
+  const result = vcState.streams.map((stream) => (
     <VideoComponent key={stream.id} stream={stream} />
   ));
   return <>{result}</>;

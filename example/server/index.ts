@@ -38,7 +38,7 @@ io.sockets.on("connection", (socket) => {
       log("Client ID " + user.id + " created roomId " + roomId);
       socket.emit("created", roomId, socket.id);
     } else {
-      io.sockets.in(roomId).emit("join", roomId);
+      io.sockets.in(roomId).emit("join", { roomId, userId: user.id });
       socket.join(roomId);
       socket.emit("joined", roomId, socket.id);
       io.sockets.in(roomId).emit("ready");
