@@ -3,6 +3,7 @@ import * as http from "http";
 import { Server } from "socket.io";
 import nodeStatic from "node-static";
 
+console.log("starting server");
 const fileServer = new nodeStatic.Server("../web/build");
 const app = http
   .createServer(function (req, res) {
@@ -61,3 +62,5 @@ io.sockets.on("connection", (socket) => {
     console.log("received bye");
   });
 });
+
+console.log("started server");

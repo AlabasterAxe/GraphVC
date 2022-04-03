@@ -1,12 +1,13 @@
 import React from "react";
 import "./App.css";
+import { VideoComponent } from "./components/VideoComponents";
 
 function App() {
   return (
     <div className="App">
       <div id="videos">
-        <video id="localVideo" autoPlay muted></video>
-        <video id="remoteVideo" autoPlay></video>
+        <VideoComponent id="localVideo" />
+        <VideoComponent id="remoteVideo" />
       </div>
     </div>
   );

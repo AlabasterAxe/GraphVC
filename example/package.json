@@ -1,0 +1,17 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "Example app using GraphVC",
+  "main": "index.js",
+  "author": "Matthew Keller",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build-web": "cd web && yarn build && cd ..",
+    "start-server": "ts-node server/index",
+    "watch-web": "cd web && yarn watch"
+  },
+  "dependencies": {
+    "ts-node": "^10.7.0"
+  }
+}
