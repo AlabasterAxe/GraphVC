@@ -1,15 +1,20 @@
 import React from "react";
 import "./App.css";
+import { NumStreamsComponent } from "./components/NumStreamsComponent";
 import { VideoComponent } from "./components/VideoComponents";
+import { StreamContext } from "./StreamContext";
 
 function App() {
   return (
-    <div className="App">
-      <div id="videos">
-        <VideoComponent id="localVideo" />
-        <VideoComponent id="remoteVideo" />
+    <StreamContext>
+      <div className="App">
+        <NumStreamsComponent />
+        <div id="videos">
+          <VideoComponent id="localVideo" />
+          <VideoComponent id="remoteVideo" />
+        </div>
       </div>
-    </div>
+    </StreamContext>
   );
 }
 
