@@ -1,7 +1,7 @@
 import React from "react";
 import "./App.css";
 import { NumStreamsComponent } from "./components/NumStreamsComponent";
-import { VideoComponent } from "./components/VideoComponents";
+import { StreamShower } from "./components/StreamShower";
 import { StreamContext } from "./StreamContext";
 
 function App() {
@@ -9,10 +9,7 @@ function App() {
     <StreamContext>
       <div className="App">
         <NumStreamsComponent />
-        <div id="videos">
-          <VideoComponent id="localVideo" />
-          <VideoComponent id="remoteVideo" />
-        </div>
+        <StreamShower />
       </div>
     </StreamContext>
   );

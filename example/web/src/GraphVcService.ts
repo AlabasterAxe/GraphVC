@@ -96,14 +96,6 @@ export function initialize() {
   let remoteStream: MediaStream | undefined;
   let pc: RTCPeerConnection | undefined;
 
-  // TODO(matt): figure out how to do this with react
-  var localVideo = document.querySelector("#localVideo") as HTMLVideoElement;
-  var remoteVideo = document.querySelector("#remoteVideo") as HTMLVideoElement;
-
-  if (!localVideo || !remoteVideo) {
-    throw new Error("couldn't find video elements");
-  }
-
   var socket = io();
 
   const room = "foo";
@@ -134,7 +126,6 @@ export function initialize() {
       pc = createPeerConnection(socket, (track) => {
         if (!remoteStream) {
           remoteStream = new MediaStream();
-          remoteVideo.srcObject = remoteStream;
           _onStreamChange(getActiveStreams());
         }
         remoteStream.addTrack(track);
@@ -153,7 +144,6 @@ export function initialize() {
   function gotStream(stream: MediaStream) {
     console.log("Adding local stream.");
     localStream = stream;
-    localVideo.srcObject = stream;
     sendMessage(socket, "got user media");
     _onStreamChange(getActiveStreams());
     if (isInitiator) {
