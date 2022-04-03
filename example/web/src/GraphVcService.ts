@@ -21,6 +21,16 @@ const CONSTRAINTS = {
   audio: true,
 };
 
+let _onStreamChange: (streams: MediaStream[]) => void = (streams) => {
+  console.log("streams changed", streams);
+};
+
+export function registerOnStreamChange(
+  onStreamChange: (streams: MediaStream[]) => void
+) {
+  _onStreamChange = onStreamChange;
+}
+
 function createPeerConnection(
   socket: Socket,
   onRemoteTrack: (track: MediaStreamTrack) => void
@@ -98,6 +108,20 @@ export function initialize() {
 
   const room = "foo";
 
+  function getActiveStreams() {
+    const result = [];
+
+    if (localStream) {
+      result.push(localStream);
+    }
+
+    if (remoteStream) {
+      result.push(remoteStream);
+    }
+
+    return result;
+  }
+
   function maybeStart() {
     console.log(
       ">>>>>>> maybeStart() ",
@@ -111,6 +135,7 @@ export function initialize() {
         if (!remoteStream) {
           remoteStream = new MediaStream();
           remoteVideo.srcObject = remoteStream;
+          _onStreamChange(getActiveStreams());
         }
         remoteStream.addTrack(track);
       });
@@ -130,6 +155,7 @@ export function initialize() {
     localStream = stream;
     localVideo.srcObject = stream;
     sendMessage(socket, "got user media");
+    _onStreamChange(getActiveStreams());
     if (isInitiator) {
       maybeStart();
     }
