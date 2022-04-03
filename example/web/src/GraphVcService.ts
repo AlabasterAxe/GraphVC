@@ -31,6 +31,12 @@ export function registerOnStreamChange(
   _onStreamChange = onStreamChange;
 }
 
+export function clearOnStreamChange() {
+  _onStreamChange = (streams) => {
+    console.log("streams changed", streams);
+  };
+}
+
 function createPeerConnection(
   socket: Socket,
   onRemoteTrack: (track: MediaStreamTrack) => void
@@ -141,7 +147,7 @@ export function initialize() {
     }
   }
 
-  function gotStream(stream: MediaStream) {
+  function onLocalStream(stream: MediaStream) {
     console.log("Adding local stream.");
     localStream = stream;
     sendMessage(socket, "got user media");
@@ -234,7 +240,7 @@ export function initialize() {
       audio: false,
       video: true,
     })
-    .then(gotStream)
+    .then(onLocalStream)
     .catch(function (e) {
       alert("getUserMedia() error: " + e.name);
     });
