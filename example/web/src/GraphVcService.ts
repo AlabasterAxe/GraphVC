@@ -1,5 +1,6 @@
 import { Socket } from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
+import { Graph } from "./model/model";
 
 declare const io: () => Socket;
 
@@ -106,6 +107,11 @@ export class GraphVcService {
       console.log("Room " + room + " is full");
     });
 
+    socket.on("graph", (graph) => {
+      console.log("got new graph", graph);
+      this.applyGraph(graph);
+    });
+
     socket.on("join", ({ roomId, userId }) => {
       console.log(`User Id ${userId} made a request to join room ` + roomId);
       console.log("This peer is the initiator of room " + roomId + "!");
@@ -167,6 +173,12 @@ export class GraphVcService {
       sendMessage(socket, "bye");
     };
   }
+
+  private applyGraph(graph: Graph) {
+    console.log("applying Graph", graph);
+  }
+
+  connect(userId: string) {}
 }
 
 /** Send a message with the socket. */
