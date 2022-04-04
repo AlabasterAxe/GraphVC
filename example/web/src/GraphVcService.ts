@@ -47,7 +47,7 @@ export class GraphVcService {
       this.isStarted = true;
       console.log("isInitiator", this.isInitiator);
       if (this.isInitiator) {
-        doCall(socket, this.pc);
+        call(this.pc);
       }
     }
   }
@@ -139,7 +139,7 @@ export class GraphVcService {
         }
         if (this.pc) {
           this.pc.setRemoteDescription(new RTCSessionDescription(message));
-          doAnswer(socket, this.pc);
+          answer(this.pc);
         }
       } else if (message.type === "answer" && this.isStarted) {
         if (this.pc) {
@@ -258,7 +258,7 @@ function createPeerConnection(
   }
 }
 
-async function doCall(socket: Socket, pc: RTCPeerConnection): Promise<void> {
+async function call(pc: RTCPeerConnection): Promise<void> {
   console.log("Sending offer to peer");
   try {
     const desc = await pc.createOffer();
@@ -270,7 +270,7 @@ async function doCall(socket: Socket, pc: RTCPeerConnection): Promise<void> {
   }
 }
 
-async function doAnswer(socket: Socket, pc: RTCPeerConnection) {
+async function answer(pc: RTCPeerConnection) {
   console.log("Sending answer to peer.");
   try {
     const desc = await pc.createAnswer();
