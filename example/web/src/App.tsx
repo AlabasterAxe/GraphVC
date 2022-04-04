@@ -1,20 +1,17 @@
-import React, { useCallback } from "react";
+import React from "react";
 import "./App.css";
 import { StatsComponent } from "./components/NumStreamsComponent";
 import { StreamShower } from "./components/StreamShower";
 import { StreamContext } from "./StreamContext";
-import { graphVcService } from "./GraphVcService";
+import { UsersRoom } from "./components/UsersRoom";
 
 function App() {
-  const startConnection = useCallback(() => {
-    graphVcService.maybeStart();
-  }, []);
   return (
     <StreamContext>
       <div className="App">
         <StatsComponent />
         <StreamShower />
-        <button onClick={startConnection}>Connect!</button>
+        <UsersRoom />
       </div>
     </StreamContext>
   );

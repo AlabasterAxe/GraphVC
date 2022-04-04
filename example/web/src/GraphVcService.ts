@@ -1,5 +1,5 @@
 import { Socket } from "socket.io-client";
-import { v4 as uuidv4 } from "uuid";
+import { localId } from "./IdService";
 import { Graph } from "./model/model";
 
 declare const io: () => Socket;
@@ -18,8 +18,7 @@ export class GraphVcService {
   localStream: MediaStream | undefined;
   remoteStream: MediaStream | undefined;
   pc: RTCPeerConnection | undefined;
-
-  readonly id = uuidv4();
+  peers: Map<string, RTCPeerConnection> = new Map();
 
   maybeStart() {
     console.log(
@@ -94,13 +93,13 @@ export class GraphVcService {
   }
 
   initialize() {
-    socket.emit("create-or-join", { roomId: ROOM, user: { id: this.id } });
+    socket.emit("create-or-join", { roomId: ROOM, user: { id: localId() } });
     console.log("Attempted to create or  join room", ROOM);
 
     socket.on("created", (room) => {
       console.log("Created room " + room);
       this.isInitiator = true;
-      _onParticipantsChange([{ id: this.id }]);
+      _onParticipantsChange([{ id: localId() }]);
     });
 
     socket.on("full", (room) => {
@@ -115,7 +114,7 @@ export class GraphVcService {
     socket.on("join", ({ roomId, userId }) => {
       console.log(`User Id ${userId} made a request to join room ` + roomId);
       console.log("This peer is the initiator of room " + roomId + "!");
-      _onParticipantsChange([{ id: this.id }, { id: userId }]);
+      _onParticipantsChange([{ id: localId() }, { id: userId }]);
       this.isChannelReady = true;
     });
 
@@ -178,7 +177,10 @@ export class GraphVcService {
     console.log("applying Graph", graph);
   }
 
-  connect(userId: string) {}
+  connect(userId: string) {
+    // todo (matt): use the userId to connect to the other user
+    this.maybeStart();
+  }
 }
 
 /** Send a message with the socket. */
