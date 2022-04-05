@@ -6,7 +6,7 @@ export function UsersRoom() {
   const { participants } = useStreamContext();
 
   const result = participants.map((participant) => (
-    <li>
+    <li key={participant.id}>
       {participant.id}{" "}
       {participant.id !== localId() && (
         <button

@@ -127,8 +127,8 @@ export class GraphVcService {
     });
 
     // This client receives a message
-    socket.on("message", (message) => {
-      console.log("Client received message:", message);
+    socket.on("message", ({ message, senderId }) => {
+      console.log("Client received message:", message, "from", senderId);
       if (message.type === "offer") {
         if (!this.isStarted) {
           this.isInitiator = false;
@@ -167,6 +167,7 @@ export class GraphVcService {
       });
 
     window.onbeforeunload = function () {
+      // todo: leave room.
       sendMessage(socket, "bye");
     };
   }

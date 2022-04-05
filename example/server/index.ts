@@ -13,6 +13,7 @@ const app = http
   .listen(8080);
 
 const clientUserMap = new Map<string, string>();
+const userClientMap = new Map<string, string>();
 
 function getUserIds(clientIds: Set<string> | undefined): Set<string> {
   const result = new Set<string>();
@@ -37,10 +38,26 @@ io.sockets.on("connection", (socket) => {
     socket.emit("log", ["Message from server:", ...args]);
   }
 
-  socket.on("message", ({ message }) => {
+  socket.on("message", ({ message, recipientId }) => {
     log("Client said: ", message);
-    // for a real app, would be room-only (not broadcast)
-    socket.broadcast.emit("message", message);
+    if (recipientId) {
+      const clientId = userClientMap.get(recipientId);
+      if (clientId) {
+        io.to(clientId).emit("message", {
+          message,
+          senderId: clientUserMap.get(socket.id),
+        });
+      } else {
+        // TODO (matt): send error
+        console.log("No client found for recipientId", recipientId);
+      }
+    }
+    // one socket should only be a member of one room so we should just
+    // send this to the room that its in.
+    socket.broadcast.emit("message", {
+      message,
+      senderId: clientUserMap.get(socket.id),
+    });
   });
 
   socket.on(CreateOrJoin, ({ roomId, user }: CreateOrJoinRequest) => {
@@ -48,6 +65,7 @@ io.sockets.on("connection", (socket) => {
 
     log("Client ID " + user.id + " joined room " + roomId);
     clientUserMap.set(socket.id, user.id);
+    userClientMap.set(user.id, socket.id);
     var clientsInRoom = io.sockets.adapter.rooms.get(roomId);
     var numClients = clientsInRoom ? clientsInRoom.size : 0;
     log("Room " + roomId + " now has " + numClients + " client(s)");
