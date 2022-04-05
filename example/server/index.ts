@@ -12,6 +12,24 @@ const app = http
   })
   .listen(8080);
 
+const clientUserMap = new Map<string, string>();
+
+function getUserIds(clientIds: Set<string> | undefined): Set<string> {
+  const result = new Set<string>();
+
+  if (!clientIds) {
+    return result;
+  }
+
+  for (const clientId of clientIds.values()) {
+    const userId = clientUserMap.get(clientId);
+    if (userId) {
+      result.add(userId);
+    }
+  }
+  return result;
+}
+
 var io = new Server(app);
 io.sockets.on("connection", (socket) => {
   // convenience function to log server messages on the client
@@ -19,7 +37,7 @@ io.sockets.on("connection", (socket) => {
     socket.emit("log", ["Message from server:", ...args]);
   }
 
-  socket.on("message", (message) => {
+  socket.on("message", ({ message }) => {
     log("Client said: ", message);
     // for a real app, would be room-only (not broadcast)
     socket.broadcast.emit("message", message);
@@ -29,6 +47,7 @@ io.sockets.on("connection", (socket) => {
     log("Received request to create or join room " + roomId);
 
     log("Client ID " + user.id + " joined room " + roomId);
+    clientUserMap.set(socket.id, user.id);
     var clientsInRoom = io.sockets.adapter.rooms.get(roomId);
     var numClients = clientsInRoom ? clientsInRoom.size : 0;
     log("Room " + roomId + " now has " + numClients + " client(s)");
@@ -38,9 +57,13 @@ io.sockets.on("connection", (socket) => {
       log("Client ID " + user.id + " created roomId " + roomId);
       socket.emit("created", roomId, socket.id);
     } else {
-      io.sockets.in(roomId).emit("join", { roomId, userId: user.id });
+      const currentUsers = getUserIds(clientsInRoom);
+      currentUsers.add(user.id);
+      io.sockets
+        .in(roomId)
+        .emit("join", { roomId, userIds: [...currentUsers] });
       socket.join(roomId);
-      socket.emit("joined", roomId, socket.id);
+      socket.emit("joined", { roomId, userIds: [...currentUsers] });
       io.sockets.in(roomId).emit("ready");
     }
   });

@@ -111,16 +111,14 @@ export class GraphVcService {
       this.applyGraph(graph);
     });
 
-    socket.on("join", ({ roomId, userId }) => {
-      console.log(`User Id ${userId} made a request to join room ` + roomId);
-      console.log("This peer is the initiator of room " + roomId + "!");
-      _onParticipantsChange([{ id: localId() }, { id: userId }]);
+    socket.on("join", ({ roomId, userIds }) => {
+      _onParticipantsChange(userIds.map((id: string) => ({ id })));
       this.isChannelReady = true;
     });
 
-    socket.on("joined", (room) => {
-      // TODO (matt): send the existing participants
-      console.log("joined: " + room);
+    socket.on("joined", ({ roomId, userIds }) => {
+      console.log("joined: " + roomId);
+      _onParticipantsChange(userIds.map((id: string) => ({ id })));
       this.isChannelReady = true;
     });
 
@@ -184,9 +182,13 @@ export class GraphVcService {
 }
 
 /** Send a message with the socket. */
-function sendMessage(socket: Socket, message: string | Record<string, any>) {
+function sendMessage(
+  socket: Socket,
+  message: string | Record<string, any>,
+  recipientId?: string
+) {
   console.log("Client sending message: ", message);
-  socket.emit("message", message);
+  socket.emit("message", { message, recipientId });
 }
 
 const CONSTRAINTS = {
