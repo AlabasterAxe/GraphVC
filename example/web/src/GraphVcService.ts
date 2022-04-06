@@ -107,11 +107,11 @@ export class GraphVcService {
       this.applyGraph(graph);
     });
 
-    socket.on("join", ({ roomId, userIds }) => {
+    socket.on("join", ({ roomId }) => {
       this.isChannelReady = true;
     });
 
-    socket.on("joined", ({ roomId, userIds }) => {
+    socket.on("joined", ({ roomId }) => {
       console.log("joined: " + roomId);
       this.isChannelReady = true;
     });

@@ -121,9 +121,9 @@ io.sockets.on("connection", (socket) => {
     } else {
       // todo: we shouldn't need to send all user ids on join anymore.
       usersInRoom.add(user.id);
-      io.sockets.in(roomId).emit("join", { roomId, userIds: [...usersInRoom] });
+      io.sockets.in(roomId).emit("join", { roomId });
       socket.join(roomId);
-      socket.emit("joined", { roomId, userIds: [...usersInRoom] });
+      socket.emit("joined", { roomId });
       io.sockets.in(roomId).emit("ready");
     }
     validateGraph(roomId, graph);
