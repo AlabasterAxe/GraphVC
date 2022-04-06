@@ -96,26 +96,23 @@ export class GraphVcService {
 
     socket.on("created", (room) => {
       console.log("Created room " + room);
-      _onParticipantsChange([{ id: localId() }]);
     });
 
     socket.on("full", (room) => {
       console.log("Room " + room + " is full");
     });
 
-    socket.on("graph", (graph) => {
+    socket.on("graph", ({ graph }) => {
       console.log("got new graph", graph);
       this.applyGraph(graph);
     });
 
     socket.on("join", ({ roomId, userIds }) => {
-      _onParticipantsChange(userIds.map((id: string) => ({ id })));
       this.isChannelReady = true;
     });
 
     socket.on("joined", ({ roomId, userIds }) => {
       console.log("joined: " + roomId);
-      _onParticipantsChange(userIds.map((id: string) => ({ id })));
       this.isChannelReady = true;
     });
 
@@ -179,7 +176,14 @@ export class GraphVcService {
   }
 
   private applyGraph(graph: Graph) {
+    _onParticipantsChange(
+      Object.keys(graph.nodes).map((id: string) => ({ id }))
+    );
     console.log("applying Graph", graph);
+    // do hangups
+    // remove streams
+    // do connections
+    // remove streams
   }
 
   connect(userId: string) {
@@ -225,7 +229,7 @@ export function clearOnStreamChange() {
 }
 
 let _onParticipantsChange: (users: User[]) => void = (users) => {
-  console.log("streams changed", users);
+  console.log("participants changed", users);
 };
 
 export function registerOnParticipantsChange(

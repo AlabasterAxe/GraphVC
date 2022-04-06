@@ -3,6 +3,8 @@ import * as http from "http";
 import { Server } from "socket.io";
 import nodeStatic from "node-static";
 import { CreateOrJoin, CreateOrJoinRequest } from "../common/src/transfer";
+// todo: figure out how to share deps
+import { Graph, Node } from "../web/src/model/model";
 
 console.log("starting server");
 const fileServer = new nodeStatic.Server("../web/build");
@@ -14,8 +16,10 @@ const app = http
 
 const clientUserMap = new Map<string, string>();
 const userClientMap = new Map<string, string>();
+const roomToGraphMap = new Map<string, Graph>();
 
-function getUserIds(clientIds: Set<string> | undefined): Set<string> {
+function getUsersInRoom(roomId: string): Set<string> {
+  const clientIds = io.sockets.adapter.rooms.get(roomId);
   const result = new Set<string>();
 
   if (!clientIds) {
@@ -29,6 +33,36 @@ function getUserIds(clientIds: Set<string> | undefined): Set<string> {
     }
   }
   return result;
+}
+
+/** Some consistency checks on rooms, e.g. do rooms have nodes for every client? */
+function validateGraph(roomId: string, graph: Graph): void {
+  const clientIds = io.sockets.adapter.rooms.get(roomId) ?? new Set();
+  const errors = [];
+
+  const userIdSet = new Set<string>(Object.keys(graph.nodes));
+  for (const clientId of clientIds) {
+    const userId = clientUserMap.get(clientId);
+    if (!userId) {
+      errors.push(`client ${clientId} has no userId`);
+      continue;
+    }
+
+    if (!userIdSet.delete(userId)) {
+      errors.push(`graph has no node for user ${userId}`);
+      continue;
+    }
+  }
+
+  for (const userId of userIdSet) {
+    errors.push(`graph node with no corresponding client: ${userId}`);
+  }
+
+  if (errors.length > 0) {
+    throw new Error(
+      `validation errors for room ${roomId}: \n\n  ${errors.join("\n  ")}`
+    );
+  }
 }
 
 var io = new Server(app);
@@ -66,24 +100,34 @@ io.sockets.on("connection", (socket) => {
     log("Client ID " + user.id + " joined room " + roomId);
     clientUserMap.set(socket.id, user.id);
     userClientMap.set(user.id, socket.id);
-    var clientsInRoom = io.sockets.adapter.rooms.get(roomId);
-    var numClients = clientsInRoom ? clientsInRoom.size : 0;
-    log("Room " + roomId + " now has " + numClients + " client(s)");
+    const usersInRoom = getUsersInRoom(roomId);
+    const numUsers = usersInRoom ? usersInRoom.size : 0;
+    let graph: Graph | undefined = roomToGraphMap.get(roomId);
+    if (!graph) {
+      graph = {
+        nodes: {},
+        edges: {},
+      };
+    }
+    graph.nodes[user.id] = { id: user.id, incoming: [], outgoing: [] };
 
-    if (numClients === 0) {
+    log("Room " + roomId + " now has " + numUsers + " client(s)");
+
+    if (numUsers === 0) {
+      roomToGraphMap.set(roomId, graph);
       socket.join(roomId);
       log("Client ID " + user.id + " created roomId " + roomId);
       socket.emit("created", roomId, socket.id);
     } else {
-      const currentUsers = getUserIds(clientsInRoom);
-      currentUsers.add(user.id);
-      io.sockets
-        .in(roomId)
-        .emit("join", { roomId, userIds: [...currentUsers] });
+      // todo: we shouldn't need to send all user ids on join anymore.
+      usersInRoom.add(user.id);
+      io.sockets.in(roomId).emit("join", { roomId, userIds: [...usersInRoom] });
       socket.join(roomId);
-      socket.emit("joined", { roomId, userIds: [...currentUsers] });
+      socket.emit("joined", { roomId, userIds: [...usersInRoom] });
       io.sockets.in(roomId).emit("ready");
     }
+    validateGraph(roomId, graph);
+    io.to(roomId).emit("graph", { graph, senderId: user.id });
   });
 
   socket.on("ipaddr", () => {
