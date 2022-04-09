@@ -9,7 +9,7 @@ export type Edge = {
   source: string;
   sink: string;
 
-  // these tracks reference track ids that can be looked up in the local track map
+  /** these tracks reference track ids that can be looked up in the local track map */
   tracks: string[];
 };
 

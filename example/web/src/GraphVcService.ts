@@ -1,11 +1,12 @@
 import { Socket } from "socket.io-client";
-import { localId } from "./IdService";
-import { Graph } from "./model/model";
+import { localId, newId } from "./IdService";
+import { Edge, Graph } from "./model/model";
 
 declare const io: () => Socket;
 
 const socket = io();
 const ROOM = "foo";
+let roomGraph: Graph | undefined;
 
 type User = {
   id: string;
@@ -176,24 +177,77 @@ export class GraphVcService {
   }
 
   private applyGraph(graph: Graph) {
+    roomGraph = graph;
     _onParticipantsChange(
       Object.keys(graph.nodes).map((id: string) => ({ id }))
     );
     console.log("applying Graph", graph);
-    // do hangups
-    // remove streams
-    // do connections
-    // remove streams
+    // TODO:
+    //   do hangups
+    //   remove streams
+    //   add streams
+    const usersToConnectTo = new Set<string>();
+    const { incoming, outgoing } = graph.nodes[localId()];
+    for (const edgeId of [...incoming, ...outgoing]) {
+      const edge = graph.edges[edgeId];
+      if (!edge) {
+        throw new Error("no edge for " + edgeId);
+      }
+
+      if (edge.source !== localId() && edge.sink === localId()) {
+        usersToConnectTo.add(edge.source);
+      } else if (edge.sink !== localId() && edge.source === localId()) {
+        usersToConnectTo.add(edge.sink);
+      } else if (edge.source === localId() && edge.sink === localId()) {
+        throw new Error(
+          "invalid edge: " + edgeId + ", both source and sink are self"
+        );
+      } else {
+        throw new Error(
+          "invalid edge: " + edgeId + ", neither source nor sink is self"
+        );
+      }
+    }
+
+    for (const userId of Array.from(usersToConnectTo)) {
+      let conn = this.peers.get(userId);
+      if (!conn) {
+        conn = this.initializeConnection(userId);
+      }
+      if (!conn.isStarted) {
+        call(conn);
+      }
+    }
   }
 
   connect(userId: string) {
-    let conn = this.peers.get(userId);
-    if (!conn) {
-      conn = this.initializeConnection(userId);
+    if (!roomGraph) {
+      throw new Error("no graph");
     }
-    if (!conn.isStarted) {
-      call(conn);
-    }
+
+    const incomingEdge: Edge = {
+      id: newId(),
+      source: userId,
+      sink: localId(),
+      tracks: [],
+    };
+
+    const outgoingEdge: Edge = {
+      id: newId(),
+      source: localId(),
+      sink: userId,
+      tracks: [],
+    };
+
+    roomGraph.nodes[userId].incoming.push(outgoingEdge.id);
+    roomGraph.nodes[userId].outgoing.push(incomingEdge.id);
+    roomGraph.nodes[localId()].outgoing.push(outgoingEdge.id);
+    roomGraph.nodes[localId()].incoming.push(incomingEdge.id);
+
+    roomGraph.edges[outgoingEdge.id] = outgoingEdge;
+    roomGraph.edges[incomingEdge.id] = incomingEdge;
+
+    socket.emit("graph", { graph: roomGraph });
   }
 }
 

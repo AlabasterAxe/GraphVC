@@ -14,9 +14,16 @@ const app = http
   })
   .listen(8080);
 
+/** Used for when we have a client id but we want a userId. */
 const clientUserMap = new Map<string, string>();
+
+/** Used for sending a message to a specific user */
 const userClientMap = new Map<string, string>();
-const roomToGraphMap = new Map<string, Graph>();
+
+const roomGraphMap = new Map<string, Graph>();
+
+/** Used for keeping track of which room a user is in */
+const userRoomMap = new Map<string, string>();
 
 function getUsersInRoom(roomId: string): Set<string> {
   const clientIds = io.sockets.adapter.rooms.get(roomId);
@@ -35,10 +42,56 @@ function getUsersInRoom(roomId: string): Set<string> {
   return result;
 }
 
+type ReferenceType = "reference" | "entity";
+type ReferenceSummary = Record<string, ReferenceType[]>;
+
+function validateReferences(graph: Graph): string[] {
+  const references: ReferenceSummary = {};
+  const errors = [];
+  for (const [key, { id, incoming, outgoing }] of Object.entries(graph.nodes)) {
+    if (key !== id) {
+      errors.push(`node key ${key} does not match id ${id}`);
+      continue;
+    }
+    references[id] = ["entity"];
+    for (const edgeId of [...incoming, ...outgoing]) {
+      if (!references[edgeId]) {
+        references[edgeId] = [];
+      }
+      references[edgeId].push("reference");
+    }
+  }
+
+  for (const [key, { id, source, sink }] of Object.entries(graph.edges)) {
+    if (key !== id) {
+      errors.push(`edge key ${key} does not match id ${id}`);
+      continue;
+    }
+    if (!references[id]) {
+      references[id] = [];
+    }
+    references[id].push("entity");
+    for (const nodeId of [source, sink]) {
+      if (!references[nodeId]) {
+        references[nodeId] = [];
+      }
+      references[nodeId].push("reference");
+    }
+  }
+
+  for (const [id, referenceTypes] of Object.entries(references)) {
+    if (referenceTypes.every((type) => type !== "entity")) {
+      errors.push(`dangling reference to entity ${id}`);
+    }
+  }
+
+  return errors;
+}
+
 /** Some consistency checks on rooms, e.g. do rooms have nodes for every client? */
 function validateGraph(roomId: string, graph: Graph): void {
   const clientIds = io.sockets.adapter.rooms.get(roomId) ?? new Set();
-  const errors = [];
+  const errors = validateReferences(graph);
 
   const userIdSet = new Set<string>(Object.keys(graph.nodes));
   for (const clientId of clientIds) {
@@ -55,7 +108,7 @@ function validateGraph(roomId: string, graph: Graph): void {
   }
 
   for (const userId of userIdSet) {
-    errors.push(`graph node with no corresponding client: ${userId}`);
+    errors.push(`user id with no corresponding client: ${userId}`);
   }
 
   if (errors.length > 0) {
@@ -94,39 +147,62 @@ io.sockets.on("connection", (socket) => {
     });
   });
 
+  socket.on("graph", ({ graph }) => {
+    const userId = clientUserMap.get(socket.id);
+    if (!userId) {
+      throw new Error("no userId for client");
+    }
+
+    const roomId = userRoomMap.get(userId);
+    if (!roomId) {
+      throw new Error("no roomId for user");
+    }
+
+    const roomGraph = roomGraphMap.get(roomId);
+    if (!roomGraph) {
+      throw new Error("no roomGraph for room");
+    }
+
+    roomGraph.nodes = { ...roomGraph.nodes, ...graph.nodes };
+    roomGraph.edges = { ...roomGraph.edges, ...graph.edges };
+
+    validateGraph(roomId, roomGraph);
+
+    socket.to(roomId).emit("graph", { graph, senderId: userId });
+  });
+
   socket.on(CreateOrJoin, ({ roomId, user }: CreateOrJoinRequest) => {
+    // todo: remove user from any previous rooms.
     log("Received request to create or join room " + roomId);
 
     log("Client ID " + user.id + " joined room " + roomId);
     clientUserMap.set(socket.id, user.id);
     userClientMap.set(user.id, socket.id);
-    const usersInRoom = getUsersInRoom(roomId);
-    const numUsers = usersInRoom ? usersInRoom.size : 0;
-    let graph: Graph | undefined = roomToGraphMap.get(roomId);
+    const numUsers = getUsersInRoom(roomId).size;
+    let graph: Graph | undefined = roomGraphMap.get(roomId);
     if (!graph) {
       graph = {
         nodes: {},
         edges: {},
       };
+      roomGraphMap.set(roomId, graph);
     }
     graph.nodes[user.id] = { id: user.id, incoming: [], outgoing: [] };
 
     log("Room " + roomId + " now has " + numUsers + " client(s)");
 
     if (numUsers === 0) {
-      roomToGraphMap.set(roomId, graph);
       socket.join(roomId);
       log("Client ID " + user.id + " created roomId " + roomId);
       socket.emit("created", roomId, socket.id);
     } else {
-      // todo: we shouldn't need to send all user ids on join anymore.
-      usersInRoom.add(user.id);
       io.sockets.in(roomId).emit("join", { roomId });
       socket.join(roomId);
       socket.emit("joined", { roomId });
       io.sockets.in(roomId).emit("ready");
     }
     validateGraph(roomId, graph);
+    userRoomMap.set(user.id, roomId);
     io.to(roomId).emit("graph", { graph, senderId: user.id });
   });
 
