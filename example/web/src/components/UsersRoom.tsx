@@ -1,11 +1,13 @@
 import { graphVcService } from "../GraphVcService";
 import { localId } from "../IdService";
 import { useStreamContext } from "../StreamContext";
+import { Node } from "../model/model";
 
 export function UsersRoom() {
-  const { participants } = useStreamContext();
+  const { graph } = useStreamContext();
 
-  const result = participants.map((participant) => (
+  const users: Node[] = graph?.nodes ? Object.values(graph.nodes) : [];
+  const result = users.map((participant) => (
     <li key={participant.id}>
       {participant.id}{" "}
       {participant.id !== localId() && (

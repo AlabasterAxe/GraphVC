@@ -178,9 +178,7 @@ export class GraphVcService {
 
   private applyGraph(graph: Graph) {
     roomGraph = graph;
-    _onParticipantsChange(
-      Object.keys(graph.nodes).map((id: string) => ({ id }))
-    );
+    _onGraphChange(graph);
     console.log("applying Graph", graph);
     // TODO:
     //   do hangups
@@ -282,19 +280,19 @@ export function clearOnStreamChange() {
   };
 }
 
-let _onParticipantsChange: (users: User[]) => void = (users) => {
-  console.log("participants changed", users);
+let _onGraphChange: (graph: Graph | undefined) => void = (graph) => {
+  console.log("graph changed", graph);
 };
 
-export function registerOnParticipantsChange(
-  onParticipantsChange: (users: User[]) => void
+export function registerOnGraphChange(
+  onGraphChange: (graph: Graph | undefined) => void
 ) {
-  _onParticipantsChange = onParticipantsChange;
+  _onGraphChange = onGraphChange;
 }
 
-export function clearOnParticipantsChange() {
-  _onParticipantsChange = (users: User[]) => {
-    console.log("participants changed", users);
+export function clearOnGraphChange() {
+  _onGraphChange = (graph: Graph | undefined) => {
+    console.log("graph changed", graph);
   };
 }
 

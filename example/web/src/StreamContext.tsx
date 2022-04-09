@@ -6,41 +6,42 @@ import {
   useState,
 } from "react";
 import * as GraphVcService from "./GraphVcService";
+import { Graph } from "./model/model";
 
 const InnerStreamContext = createContext<{
   streams: MediaStream[];
-  participants: { id: string }[];
-}>({ streams: [], participants: [] });
+  graph: Graph | undefined;
+}>({ streams: [], graph: undefined });
 
 export const useStreamContext = () => useContext(InnerStreamContext);
 
 export function StreamContext({ children }: { children: React.ReactNode }) {
   const [streams, setStreams] = useState<MediaStream[]>([]);
-  const [participants, setParticipants] = useState<{ id: string }[]>([]);
+  const [graph, setGraph] = useState<Graph | undefined>();
 
   const setStreamsCallback = useCallback(
     (streams: MediaStream[]) => setStreams(streams),
     [setStreams]
   );
 
-  const setParticipantsCallback = useCallback(
-    (participants: { id: string }[]) => setParticipants(participants),
-    [setParticipants]
+  const setGraphCallback = useCallback(
+    (graph: Graph | undefined) => setGraph(graph),
+    [setGraph]
   );
 
   // still unclear to me if this is a reasonable thing to do.
   // do I need the useCallbacks above?
   useEffect(() => {
     GraphVcService.registerOnStreamChange(setStreamsCallback);
-    GraphVcService.registerOnParticipantsChange(setParticipantsCallback);
+    GraphVcService.registerOnGraphChange(setGraphCallback);
     return () => {
       GraphVcService.clearOnStreamChange();
-      GraphVcService.clearOnParticipantsChange();
+      GraphVcService.clearOnGraphChange();
     };
-  }, [setStreamsCallback, setParticipantsCallback]);
+  }, [setStreamsCallback, setGraphCallback]);
 
   return (
-    <InnerStreamContext.Provider value={{ streams, participants }}>
+    <InnerStreamContext.Provider value={{ streams, graph }}>
       {children}
     </InnerStreamContext.Provider>
   );
