@@ -42,6 +42,27 @@ function getUsersInRoom(roomId: string): Set<string> {
   return result;
 }
 
+function removeUserFromRoom(roomId: string, userId: string): void {
+  const graph = roomGraphMap.get(roomId);
+  if (!graph) {
+    throw new Error(`no graph for room ${roomId}`);
+  }
+
+  const node = graph.nodes[userId];
+
+  if (!node) {
+    throw new Error(`no node for user ${userId} in room ${roomId}`);
+  }
+
+  for (const edgeId of [...node.incoming, ...node.outgoing]) {
+    delete graph.edges[edgeId];
+  }
+
+  delete graph.nodes[userId];
+
+  userRoomMap.delete(userId);
+}
+
 type ReferenceType = "reference" | "entity";
 type ReferenceSummary = Record<string, ReferenceType[]>;
 
@@ -178,7 +199,7 @@ io.sockets.on("connection", (socket) => {
     log("Client ID " + user.id + " joined room " + roomId);
     clientUserMap.set(socket.id, user.id);
     userClientMap.set(user.id, socket.id);
-    const numUsers = getUsersInRoom(roomId).size;
+    const users = getUsersInRoom(roomId);
     let graph: Graph | undefined = roomGraphMap.get(roomId);
     if (!graph) {
       graph = {
@@ -189,9 +210,9 @@ io.sockets.on("connection", (socket) => {
     }
     graph.nodes[user.id] = { id: user.id, incoming: [], outgoing: [] };
 
-    log("Room " + roomId + " now has " + numUsers + " client(s)");
+    log("Room " + roomId + " now has " + users.size + " client(s)");
 
-    if (numUsers === 0) {
+    if (users.size === 0) {
       socket.join(roomId);
       log("Client ID " + user.id + " created roomId " + roomId);
       socket.emit("created", roomId, socket.id);
@@ -222,6 +243,22 @@ io.sockets.on("connection", (socket) => {
 
   socket.on("bye", function () {
     console.log("received bye");
+  });
+
+  socket.on("disconnect", (reason) => {
+    const userId = clientUserMap.get(socket.id);
+    if (!userId) {
+      return;
+    }
+
+    clientUserMap.delete(socket.id);
+    userClientMap.delete(userId);
+    const roomId = userRoomMap.get(userId);
+    if (!roomId) {
+      return;
+    }
+
+    removeUserFromRoom(roomId, userId);
   });
 });
 

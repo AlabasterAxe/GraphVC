@@ -218,29 +218,29 @@ export class GraphVcService {
     }
   }
 
-  connect(userId: string) {
+  connect(sourceUserId: string, sinkUserId: string) {
     if (!roomGraph) {
       throw new Error("no graph");
     }
 
     const incomingEdge: Edge = {
       id: newId(),
-      source: userId,
-      sink: localId(),
+      source: sinkUserId,
+      sink: sourceUserId,
       tracks: [],
     };
 
     const outgoingEdge: Edge = {
       id: newId(),
-      source: localId(),
-      sink: userId,
+      source: sourceUserId,
+      sink: sinkUserId,
       tracks: [],
     };
 
-    roomGraph.nodes[userId].incoming.push(outgoingEdge.id);
-    roomGraph.nodes[userId].outgoing.push(incomingEdge.id);
-    roomGraph.nodes[localId()].outgoing.push(outgoingEdge.id);
-    roomGraph.nodes[localId()].incoming.push(incomingEdge.id);
+    roomGraph.nodes[sinkUserId].incoming.push(outgoingEdge.id);
+    roomGraph.nodes[sinkUserId].outgoing.push(incomingEdge.id);
+    roomGraph.nodes[sourceUserId].outgoing.push(outgoingEdge.id);
+    roomGraph.nodes[sourceUserId].incoming.push(incomingEdge.id);
 
     roomGraph.edges[outgoingEdge.id] = outgoingEdge;
     roomGraph.edges[incomingEdge.id] = incomingEdge;
