@@ -54,7 +54,19 @@ function removeUserFromRoom(roomId: string, userId: string): void {
     throw new Error(`no node for user ${userId} in room ${roomId}`);
   }
 
-  for (const edgeId of [...node.incoming, ...node.outgoing]) {
+  for (const edgeId of node.incoming) {
+    const edge = graph.edges[edgeId];
+    graph.nodes[edge.source].outgoing = graph.nodes[
+      edge.source
+    ].outgoing.filter((x) => x !== edgeId);
+    delete graph.edges[edgeId];
+  }
+
+  for (const edgeId of node.outgoing) {
+    const edge = graph.edges[edgeId];
+    graph.nodes[edge.sink].incoming = graph.nodes[edge.sink].incoming.filter(
+      (x) => x !== edgeId
+    );
     delete graph.edges[edgeId];
   }
 

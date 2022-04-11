@@ -89,6 +89,7 @@ export class GraphVcService {
     }
     conn.pc.close();
     this.peers.delete(userId);
+    _onStreamChange(this.getActiveStreams());
   }
 
   initialize() {
@@ -180,11 +181,13 @@ export class GraphVcService {
     roomGraph = graph;
     _onGraphChange(graph);
     console.log("applying Graph", graph);
+
     // TODO:
     //   do hangups
     //   remove streams
     //   add streams
     const usersToConnectTo = new Set<string>();
+
     const { incoming, outgoing } = graph.nodes[localId()];
     for (const edgeId of [...incoming, ...outgoing]) {
       const edge = graph.edges[edgeId];
@@ -207,7 +210,14 @@ export class GraphVcService {
       }
     }
 
-    for (const userId of Array.from(usersToConnectTo)) {
+    for (const conn of this.peers.values()) {
+      if (!usersToConnectTo.has(conn.userId)) {
+        this.handleRemoteHangup(conn.userId);
+        this.peers.delete(conn.userId);
+      }
+    }
+
+    for (const userId of usersToConnectTo) {
       let conn = this.peers.get(userId);
       if (!conn) {
         conn = this.initializeConnection(userId);

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { graphVcService } from "../GraphVcService";
+import { localId } from "../IdService";
 import { Graph } from "../model/model";
 
 const LOCATIONS = [
   { x: 33, y: 50 },
   { x: 66, y: 50 },
+  { x: 50, y: 33 },
+  { x: 50, y: 66 },
 ];
 
 function getNodes(graph: Graph | undefined): {
@@ -101,7 +104,8 @@ export function GraphDrawer({ graph }: { graph: Graph | undefined }) {
             setMoveLoc(undefined);
             setMouseDownLoc(undefined);
           }}
-        />
+          fill={localId() === nodeId ? "red" : "black"}
+        ></circle>
       );
     }
   }
