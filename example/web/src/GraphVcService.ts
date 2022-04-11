@@ -8,6 +8,12 @@ const socket = io();
 const ROOM = "foo";
 let roomGraph: Graph | undefined;
 
+const ICE_SERVERS = [
+  {
+    urls: "stun:stun.l.google.com:19302",
+  },
+];
+
 type User = {
   id: string;
 };
@@ -334,7 +340,9 @@ function createPeerConnection(
   }
 
   try {
-    const pc = new RTCPeerConnection();
+    const pc = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+    });
     pc.onicecandidate = handleIceCandidate;
     pc.ontrack = handleTrackEvent;
     console.log("Created RTCPeerConnection");
