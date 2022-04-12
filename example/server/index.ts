@@ -183,7 +183,8 @@ io.sockets.on("connection", (socket) => {
   socket.on("graph", ({ graph }) => {
     const userId = clientUserMap.get(socket.id);
     if (!userId) {
-      throw new Error("no userId for client");
+      console.error("no userId for client");
+      return;
     }
 
     const roomId = userRoomMap.get(userId);
