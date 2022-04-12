@@ -42,7 +42,7 @@ function getUsersInRoom(roomId: string): Set<string> {
   return result;
 }
 
-function removeUserFromRoom(roomId: string, userId: string): void {
+function removeUserFromRoom(roomId: string, userId: string): Graph {
   const graph = roomGraphMap.get(roomId);
   if (!graph) {
     throw new Error(`no graph for room ${roomId}`);
@@ -73,6 +73,8 @@ function removeUserFromRoom(roomId: string, userId: string): void {
   delete graph.nodes[userId];
 
   userRoomMap.delete(userId);
+
+  return graph;
 }
 
 type ReferenceType = "reference" | "entity";
@@ -271,7 +273,8 @@ io.sockets.on("connection", (socket) => {
       return;
     }
 
-    removeUserFromRoom(roomId, userId);
+    const graph = removeUserFromRoom(roomId, userId);
+    io.to(roomId).emit("graph", { graph });
   });
 });
 
