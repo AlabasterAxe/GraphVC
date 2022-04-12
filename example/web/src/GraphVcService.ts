@@ -12,6 +12,11 @@ const ICE_SERVERS = [
   {
     urls: "stun:stun.l.google.com:19302",
   },
+  {
+    urls: "turn:104.198.254.64:3478",
+    username: "test",
+    credential: "test123",
+  },
 ];
 
 type User = {
