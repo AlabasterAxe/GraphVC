@@ -396,6 +396,10 @@
    * 3. It's useful to have a centralized inventory of all projects and their important metadata.
    */
   "projects": [
+    {
+      "packageName": "graph-vc-core",
+      "projectFolder": "packages/core"
+    }
     // {
     //   /**
     //    * The NPM package name of the project (must match package.json)
