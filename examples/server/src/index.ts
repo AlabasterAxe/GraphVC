@@ -2,9 +2,8 @@ import * as os from "os";
 import * as http from "http";
 import { Server } from "socket.io";
 import nodeStatic from "node-static";
-import { CreateOrJoin, CreateOrJoinRequest } from "../common/src/transfer";
+import { CreateOrJoin, CreateOrJoinRequest, Graph  } from "graph-vc-core";
 // todo: figure out how to share deps
-import { Graph, Node } from "../web/src/model/model";
 
 console.log("starting server");
 const fileServer = new nodeStatic.Server("../web/build");

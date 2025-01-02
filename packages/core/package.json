@@ -1,4 +1,12 @@
 {
     "name": "graph-vc-core",
-    "version": "0.0.1"
+    "version": "0.0.1",
+    "main": "dist/src/index.js",
+    "typings": "dist/src/index.d.ts",
+    "scripts": {
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "typescript": "4.7.4"
+    }
 }
